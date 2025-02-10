@@ -3,24 +3,26 @@ import textwrap
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# Bot Configuration (Only BOT TOKEN Required)
-BOT_TOKEN = "7289532935:AAE_pNosgh7e86RwL81mJYjGkeLiV-m0ao4"  # Replace with your bot token
-OWNER_ID = 7222795580  # Replace with your Telegram user ID
+# 🌟 Bot Configuration
+API_ID = 22318470  # 🔥 Replace with your API ID
+API_HASH = "cf907c4c2d677b9f67d32828d891e97a"  # 🔥 Replace with your API Hash
+BOT_TOKEN = "7289532935:AAHnEf1JJEGwKX2Dw6_EhVzpFw8yJtW9TcI"  # 🔥 Replace with your Bot Token
+OWNER_ID = 7222795580  # 🔥 Replace with your Telegram user ID
 
-# Database to track stats
+# 🚀 Initialize Pyrogram Bot
+app = Client("PaymentGatewayBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+
+# 📊 Database to track stats
 stats = {"total_users": set(), "sites_checked": 0}
-
-# Initialize Pyrogram Bot (No API ID & API HASH Required)
-app = Client("PaymentGatewayBot", bot_token=BOT_TOKEN)
 
 
 def format_message(content):
-    """Auto-wraps text to fit mobile screens."""
+    """✨ Auto-wraps text to fit mobile screens."""
     return textwrap.fill(content, width=40)
 
 
 def find_payment_gateways(response_text):
-    """Scans the response text for known payment gateways."""
+    """💰 Scans the response text for known payment gateways."""
     lower_text = response_text.lower()
     gateways = {
         "paypal": "💰 PayPal", "stripe": "💳 Stripe", "braintree": "🏦 Braintree",
@@ -31,24 +33,24 @@ def find_payment_gateways(response_text):
 
 
 def find_captcha(response_text):
-    """Detects the type of captcha used on the website."""
+    """🛡️ Detects the type of captcha used on the website."""
     response_text_lower = response_text.lower()
     if 'recaptcha' in response_text_lower:
         return '🟢 Google reCAPTCHA ✅'
     elif 'hcaptcha' in response_text_lower:
         return '🟡 hCaptcha ✅'
-    return '🔴 No Captcha Detected 🚫'
+    return '🔴 No Captcha Detected ❌'
 
 
 def detect_cloudflare(response):
-    """Detects if Cloudflare protection is enabled on the website."""
+    """☁️ Detects if Cloudflare protection is enabled on the website."""
     cloudflare_indicators = ["cloudflare.com", "__cfduid", "cf-ray", "cf-cache-status", "server"]
     response_text_lower = response.text.lower()
     return any(indicator in response_text_lower or indicator in response.headers for indicator in cloudflare_indicators)
 
 
 def fetch_website_data(url):
-    """Fetches website content and analyzes security & payment methods."""
+    """🌐 Fetches website content and analyzes security & payment methods."""
     headers = {'User-Agent': 'Mozilla/5.0'}
     try:
         response = requests.get(url, headers=headers, timeout=10)
@@ -64,16 +66,16 @@ def fetch_website_data(url):
 
 @app.on_message(filters.command("start"))
 async def start(client, message):
-    """Handles /start command."""
+    """👋 Handles /start command."""
     user = message.from_user
     start_msg = (
         f"👋 **Welcome {user.first_name}!**\n\n"
-        "🚀 This bot helps you **check payment gateways, captchas, and Cloudflare protection** on any website.\n\n"
-        "**📌 Available Commands:**\n"
+        "🚀 **This bot helps you check payment gateways, captchas, and Cloudflare protection** on any website.\n\n"
+        "📌 **Available Commands:**\n"
         "🔹 `/gate <site>` - Check payment gateways\n"
         "🔹 `/profile` - View your info\n"
         "🔹 `/stats` - Bot statistics (Owner only)\n\n"
-        "🔗 **Join [@PhiloBots](https://t.me/PhiloBots) for More Tools**"
+        "🔗 **Join [@PhiloBots](https://t.me/PhiloBots) for More Tools!**"
     )
     keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("📢 Join @PhiloBots", url="https://t.me/PhiloBots")]])
     await message.reply(start_msg, reply_markup=keyboard)
@@ -81,7 +83,7 @@ async def start(client, message):
 
 @app.on_message(filters.command("profile"))
 async def profile(client, message):
-    """Handles /profile command to show user information."""
+    """👤 Handles /profile command to show user information."""
     user = message.from_user
     profile_msg = (
         f"👤 **User Profile**\n"
@@ -96,7 +98,7 @@ async def profile(client, message):
 
 @app.on_message(filters.command("stats") & filters.user(OWNER_ID))
 async def stats_command(client, message):
-    """Handles /stats command for bot statistics (Owner only)."""
+    """📊 Handles /stats command for bot statistics (Owner only)."""
     total_users = len(stats["total_users"])
     sites_checked = stats["sites_checked"]
     stats_msg = (
@@ -111,7 +113,7 @@ async def stats_command(client, message):
 
 @app.on_message(filters.command("gate"))
 async def check_payment_gateways(client, message):
-    """Handles /gate command and fetches payment gateway details."""
+    """🔍 Handles /gate command and fetches payment gateway details."""
     user_id = message.from_user.id
     stats["total_users"].add(user_id)  # Track unique users
 
@@ -133,7 +135,7 @@ async def check_payment_gateways(client, message):
     captcha = data['detected_captcha']
     cloudflare = "✅ Enabled" if data['cloudflare_protected'] else "🚫 Not Enabled"
 
-    # **Auto-wrap text for better display**
+    # 📝 Auto-wrap text for better display
     site_text = format_message(f"🌐 **Site:** {website_url}")
     gateways_text = format_message(f"💳 **Payment Gateways:** {gateways}")
     captcha_text = format_message(f"🔒 **Captcha:** {captcha}")
