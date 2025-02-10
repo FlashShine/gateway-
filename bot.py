@@ -1,12 +1,13 @@
 import requests
 import textwrap
+import re
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # 🌟 Bot Configuration
 API_ID = 22318470  # 🔥 Replace with your API ID
 API_HASH = "cf907c4c2d677b9f67d32828d891e97a"  # 🔥 Replace with your API Hash
-BOT_TOKEN = "7289532935:AAHnEf1JJEGwKX2Dw6_EhVzpFw8yJtW9TcI"  # 🔥 Replace with your Bot Token
+BOT_TOKEN = "7289532935:AAFg3xuwRW--6t8Eqo7GU-qTbrIRJG8nhM8"  # 🔥 Replace with your Bot Token
 OWNER_ID = 7222795580  # 🔥 Replace with your Telegram user ID
 
 # 🚀 Initialize Pyrogram Bot
@@ -49,6 +50,16 @@ def detect_cloudflare(response):
     return any(indicator in response_text_lower or indicator in response.headers for indicator in cloudflare_indicators)
 
 
+def detect_payment_type(response_text):
+    """🔒 Detects if the Payment Gateway is 2D or 3D Secure."""
+    response_text_lower = response_text.lower()
+    if "3d secure" in response_text_lower or "stripe3dsecure" in response_text_lower:
+        return "🔐 3D Secure ✅"
+    elif "stripe-checkout" in response_text_lower or "2d secure" in response_text_lower:
+        return "🔓 2D Payment ❌"
+    return "⚠️ Unknown Payment Type"
+
+
 def fetch_website_data(url):
     """🌐 Fetches website content and analyzes security & payment methods."""
     headers = {'User-Agent': 'Mozilla/5.0'}
@@ -59,6 +70,7 @@ def fetch_website_data(url):
             "detected_gateways": find_payment_gateways(response.text),
             "detected_captcha": find_captcha(response.text),
             "cloudflare_protected": detect_cloudflare(response),
+            "payment_type": detect_payment_type(response.text),
         }
     except requests.RequestException:
         return None
@@ -70,58 +82,29 @@ async def start(client, message):
     user = message.from_user
     start_msg = (
         f"👋 **Welcome {user.first_name}!**\n\n"
-        "🚀 **This bot helps you check payment gateways, captchas, and Cloudflare protection** on any website.\n\n"
-        "📌 **Available Commands:**\n"
-        "🔹 `/gate <site>` - Check payment gateways\n"
-        "🔹 `/profile` - View your info\n"
-        "🔹 `/stats` - Bot statistics (Owner only)\n\n"
+        "🚀 **This bot helps you check payment gateways, captchas, payment security, and Cloudflare protection** on any website.\n\n"
+        "📌 **Simply send a website URL and the bot will analyze it!**\n\n"
         "🔗 **Join [@PhiloBots](https://t.me/PhiloBots) for More Tools!**"
     )
     keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("📢 Join @PhiloBots", url="https://t.me/PhiloBots")]])
     await message.reply(start_msg, reply_markup=keyboard)
 
 
-@app.on_message(filters.command("profile"))
-async def profile(client, message):
-    """👤 Handles /profile command to show user information."""
-    user = message.from_user
-    profile_msg = (
-        f"👤 **User Profile**\n"
-        f"━━━━━━━━━━━━━━━━━━━\n"
-        f"🆔 **User ID:** `{user.id}`\n"
-        f"👤 **Name:** `{user.first_name} {user.last_name or ''}`\n"
-        f"🔹 **Username:** `@{user.username or 'N/A'}`\n"
-        f"━━━━━━━━━━━━━━━━━━━"
-    )
-    await message.reply(profile_msg)
-
-
-@app.on_message(filters.command("stats") & filters.user(OWNER_ID))
-async def stats_command(client, message):
-    """📊 Handles /stats command for bot statistics (Owner only)."""
-    total_users = len(stats["total_users"])
-    sites_checked = stats["sites_checked"]
-    stats_msg = (
-        f"📊 **Bot Statistics**\n"
-        f"━━━━━━━━━━━━━━━━━━━\n"
-        f"👥 **Total Users:** `{total_users}`\n"
-        f"🌐 **Sites Checked:** `{sites_checked}`\n"
-        f"━━━━━━━━━━━━━━━━━━━"
-    )
-    await message.reply(stats_msg)
-
-
-@app.on_message(filters.command("gate"))
-async def check_payment_gateways(client, message):
-    """🔍 Handles /gate command and fetches payment gateway details."""
+@app.on_message(filters.text & ~filters.command(["start", "profile", "stats"]))
+async def auto_check_site(client, message):
+    """🔍 Automatically checks URLs sent without needing a command."""
     user_id = message.from_user.id
+    user_name = message.from_user.first_name
     stats["total_users"].add(user_id)  # Track unique users
 
-    processing_message = await message.reply("🔍 **Scanning the website... Please wait...**", disable_web_page_preview=True)
+    # Extract URL from message
+    urls = re.findall(r'https?://\S+', message.text)
+    if not urls:
+        return
 
-    website_url = message.text[len('/gate'):].strip()
-    if not website_url.startswith(("http://", "https://")):
-        website_url = "http://" + website_url  
+    website_url = urls[0]
+
+    processing_message = await message.reply("🔍 **Scanning the website... Please wait...**", disable_web_page_preview=True)
 
     data = fetch_website_data(website_url)
 
@@ -134,12 +117,15 @@ async def check_payment_gateways(client, message):
     gateways = ', '.join(data['detected_gateways'])
     captcha = data['detected_captcha']
     cloudflare = "✅ Enabled" if data['cloudflare_protected'] else "🚫 Not Enabled"
+    payment_type = data["payment_type"]
 
     # 📝 Auto-wrap text for better display
     site_text = format_message(f"🌐 **Site:** {website_url}")
     gateways_text = format_message(f"💳 **Payment Gateways:** {gateways}")
     captcha_text = format_message(f"🔒 **Captcha:** {captcha}")
     cloudflare_text = format_message(f"☁️ **Cloudflare:** {cloudflare}")
+    payment_text = format_message(f"💠 **Payment Type:** {payment_type}")
+    checked_by_text = format_message(f"👤 **Checked By:** {user_name}")
 
     result_message = (
         "╭━━━━━━━━━━━━━━━━━━━╮\n"
@@ -147,6 +133,8 @@ async def check_payment_gateways(client, message):
         f"│ {gateways_text}\n"
         f"│ {captcha_text}\n"
         f"│ {cloudflare_text}\n"
+        f"│ {payment_text}\n"
+        f"│ {checked_by_text}\n"
         "╰━━━━━━━━━━━━━━━━━━━╯"
     )
 
